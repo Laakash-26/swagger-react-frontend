@@ -1,0 +1,144 @@
+/* ===============================
+   CONTAINER
+================================ */
+.schema-section {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+/* ===============================
+   HEADER
+================================ */
+.schema-header {
+  margin-bottom: 1.5rem;
+}
+
+.schema-header h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.schema-header p {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+/* ===============================
+   GRID
+================================ */
+.schema-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 1rem;
+}
+
+/* ===============================
+   CARD
+================================ */
+.schema-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.15s ease;
+}
+
+.schema-card:hover {
+  background: #f9fafb;
+  border-color: #c7d2fe;
+}
+
+/* ===============================
+   CONTENT
+================================ */
+.schema-icon {
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.schema-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.7rem;
+  color: #1f2937;
+}
+
+/* ===============================
+   COPY JSON BUTTON (BLUE)
+================================ */
+.schema-copy-button {
+  width: 100%;
+  background: #2563eb;
+  color: #ffffff;
+  border: 1px solid #2563eb;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.schema-copy-button:hover {
+  background: #1d4ed8;
+}
+
+/* COPIED STATE (GREEN) */
+.schema-copy-button.copied {
+  background: #16a34a;
+  border-color: #16a34a;
+}
+
+/* ===============================
+   ACTION BUTTONS (MOVED DOWN)
+================================ */
+.schema-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 1.8rem; /* 👈 moved down */
+}
+
+/* ACTION BUTTON STYLE */
+.schema-action-btn {
+  background: #f8fafc;
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
+  padding: 0.45rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.15s ease;
+}
+
+.schema-action-btn:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+
+/* ===============================
+   RESPONSIVE
+================================ */
+@media (max-width: 768px) {
+  .schema-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .schema-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .schema-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

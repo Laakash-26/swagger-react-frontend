@@ -1,0 +1,2002 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "",
+    "description": "",
+    "version": ""
+  },
+
+  "servers": [
+    {
+      "url": "https://swagger.in/practise-api",
+      "description": "Production server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Health check endpoints (no authentication required)"
+    },
+    {
+      "name": "Auth",
+      "description": "Authentication and OAuth2 token endpoints"
+    },
+    {
+      "name": "Billers",
+      "description": "Service providers (telecom, electricity, etc.)"
+    },
+    {
+      "name": "Bills",
+      "description": "User bills and bill management"
+    },
+    {
+      "name": "Payments",
+      "description": "Payment processing and history"
+    },
+    {
+      "name": "Payment Methods",
+      "description": "User payment methods (UPI, cards, etc.)"
+    },
+    {
+      "name": "Users",
+      "description": "User management"
+    },
+    {
+      "name": "Files",
+      "description": "File upload and management (multipart/form-data)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "API Key authentication"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Bearer token authentication"
+      },
+      "BasicAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Basic authentication"
+      }
+    },
+    "schemas": {
+      "Money": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "format": "float"
+          },
+          "currency": {
+            "type": "string",
+            "default": "USD"
+          }
+        }
+      },
+      "Address": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "street": { "type": "string" },
+          "city": { "type": "string" },
+          "state": { "type": "string" },
+          "zipCode": { "type": "string" },
+          "country": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer", "minimum": 1 },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "total": { "type": "integer" },
+          "totalPages": { "type": "integer" }
+        }
+      },
+      "ResponseMeta": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" },
+          "requestId": { "type": "string" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" },
+          "code": { "type": "integer" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DeleteResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" },
+          "deleted": { "type": "boolean" }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "enum": ["ok", "error"] },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DbHealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "enum": ["ok", "error"] },
+          "database": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TokenResponse": {
+        "type": "object",
+        "properties": {
+          "access_token": { "type": "string" },
+          "token_type": { "type": "string", "default": "Bearer" },
+          "expires_in": { "type": "integer" }
+        }
+      },
+      "AuthMeResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "email": { "type": "string" },
+          "name": { "type": "string" }
+        }
+      },
+      "BillerCategory": {
+        "type": "string",
+        "enum": ["utilities", "telecom", "insurance", "credit_card", "other"]
+      },
+      "BillStatus": {
+        "type": "string",
+        "enum": ["pending", "paid", "overdue"]
+      },
+      "PaymentStatus": {
+        "type": "string",
+        "enum": ["pending", "completed", "failed", "refunded", "cancelled"]
+      },
+      "PaymentMethodType": {
+        "type": "string",
+        "enum": ["credit_card", "debit_card", "bank_account", "wallet", "upi"]
+      },
+      "KycStatus": {
+        "type": "string",
+        "enum": ["pending", "verified", "rejected"]
+      },
+      "Biller": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "category": { "$ref": "#/components/schemas/BillerCategory" },
+          "addressId": { "type": "integer" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BillerInput": {
+        "type": "object",
+        "required": ["name", "category"],
+        "properties": {
+          "name": { "type": "string" },
+          "category": { "$ref": "#/components/schemas/BillerCategory" },
+          "addressId": { "type": "integer" }
+        }
+      },
+      "BillerPatch": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "category": { "$ref": "#/components/schemas/BillerCategory" },
+          "addressId": { "type": "integer" }
+        }
+      },
+      "BillerResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Biller" },
+          { "$ref": "#/components/schemas/ResponseMeta" }
+        ]
+      },
+      "BillersListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Biller" }
+          },
+          "pagination": { "$ref": "#/components/schemas/Pagination" },
+          "meta": { "$ref": "#/components/schemas/ResponseMeta" }
+        }
+      },
+      "CategoriesResponse": {
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BillerCategory" }
+          }
+        }
+      },
+      "Bill": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "userId": { "type": "integer" },
+          "billerId": { "type": "integer" },
+          "amount": { "type": "number", "format": "float" },
+          "dueDate": { "type": "string", "format": "date" },
+          "status": { "$ref": "#/components/schemas/BillStatus" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BillInput": {
+        "type": "object",
+        "required": ["userId", "billerId", "amount", "dueDate"],
+        "properties": {
+          "userId": { "type": "integer" },
+          "billerId": { "type": "integer" },
+          "amount": { "type": "number", "format": "float" },
+          "dueDate": { "type": "string", "format": "date" }
+        }
+      },
+      "BillPatch": {
+        "type": "object",
+        "properties": {
+          "amount": { "type": "number", "format": "float" },
+          "dueDate": { "type": "string", "format": "date" },
+          "status": { "$ref": "#/components/schemas/BillStatus" }
+        }
+      },
+      "BillResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Bill" },
+          { "$ref": "#/components/schemas/ResponseMeta" }
+        ]
+      },
+      "BillsListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Bill" }
+          },
+          "pagination": { "$ref": "#/components/schemas/Pagination" },
+          "meta": { "$ref": "#/components/schemas/ResponseMeta" }
+        }
+      },
+      "BillsSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "pending": { "type": "integer" },
+          "paid": { "type": "integer" },
+          "overdue": { "type": "integer" },
+          "totalAmount": { "type": "number", "format": "float" }
+        }
+      },
+      "BillFetchResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" },
+          "bill": { "$ref": "#/components/schemas/Bill" }
+        }
+      },
+      "Payment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "billId": { "type": "integer" },
+          "amount": { "type": "number", "format": "float" },
+          "paymentMethodId": { "type": "integer" },
+          "status": { "$ref": "#/components/schemas/PaymentStatus" },
+          "transactionId": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PaymentInput": {
+        "type": "object",
+        "required": ["billId", "amount", "paymentMethodId"],
+        "properties": {
+          "billId": { "type": "integer" },
+          "amount": { "type": "number", "format": "float" },
+          "paymentMethodId": { "type": "integer" }
+        }
+      },
+      "PaymentResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Payment" },
+          { "$ref": "#/components/schemas/ResponseMeta" }
+        ]
+      },
+      "PaymentsListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Payment" }
+          },
+          "pagination": { "$ref": "#/components/schemas/Pagination" },
+          "meta": { "$ref": "#/components/schemas/ResponseMeta" }
+        }
+      },
+      "PaymentStatsResponse": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "completed": { "type": "integer" },
+          "failed": { "type": "integer" },
+          "totalAmount": { "type": "number", "format": "float" }
+        }
+      },
+      "RefundResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" },
+          "refundId": { "type": "string" },
+          "amount": { "type": "number", "format": "float" }
+        }
+      },
+      "PaymentMethod": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "userId": { "type": "integer" },
+          "type": { "$ref": "#/components/schemas/PaymentMethodType" },
+          "last4": { "type": "string" },
+          "expiryMonth": { "type": "integer", "minimum": 1, "maximum": 12 },
+          "expiryYear": { "type": "integer" },
+          "isDefault": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PaymentMethodInput": {
+        "type": "object",
+        "required": ["userId", "type"],
+        "properties": {
+          "userId": { "type": "integer" },
+          "type": { "$ref": "#/components/schemas/PaymentMethodType" },
+          "last4": { "type": "string" },
+          "expiryMonth": { "type": "integer", "minimum": 1, "maximum": 12 },
+          "expiryYear": { "type": "integer" }
+        }
+      },
+      "PaymentMethodResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/PaymentMethod" },
+          { "$ref": "#/components/schemas/ResponseMeta" }
+        ]
+      },
+      "PaymentMethodsListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PaymentMethod" }
+          },
+          "pagination": { "$ref": "#/components/schemas/Pagination" },
+          "meta": { "$ref": "#/components/schemas/ResponseMeta" }
+        }
+      },
+      "PaymentTypesResponse": {
+        "type": "object",
+        "properties": {
+          "types": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PaymentMethodType" }
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "phone": { "type": "string" },
+          "kycStatus": { "$ref": "#/components/schemas/KycStatus" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "UserInput": {
+        "type": "object",
+        "required": ["name", "email"],
+        "properties": {
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "phone": { "type": "string" }
+        }
+      },
+      "UserPatch": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "phone": { "type": "string" }
+        }
+      },
+      "UserResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/User" },
+          { "$ref": "#/components/schemas/ResponseMeta" }
+        ]
+      },
+      "UsersListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/User" }
+          },
+          "pagination": { "$ref": "#/components/schemas/Pagination" },
+          "meta": { "$ref": "#/components/schemas/ResponseMeta" }
+        }
+      },
+      "TransactionsListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Payment" }
+          },
+          "pagination": { "$ref": "#/components/schemas/Pagination" },
+          "meta": { "$ref": "#/components/schemas/ResponseMeta" }
+        }
+      },
+      "KycVerificationResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" },
+          "kycStatus": { "$ref": "#/components/schemas/KycStatus" }
+        }
+      },
+      "UploadedFile": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "fileName": { "type": "string" },
+          "fileSize": { "type": "integer" },
+          "mimeType": { "type": "string" },
+          "url": { "type": "string", "format": "uri" },
+          "uploadedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "FileUploadResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/UploadedFile" },
+          { "$ref": "#/components/schemas/ResponseMeta" }
+        ]
+      },
+      "MultiFileUploadResponse": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/UploadedFile" }
+          },
+          "meta": { "$ref": "#/components/schemas/ResponseMeta" }
+        }
+      },
+      "FileResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/UploadedFile" },
+          { "$ref": "#/components/schemas/ResponseMeta" }
+        ]
+      },
+      "FilesListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/UploadedFile" }
+          },
+          "pagination": { "$ref": "#/components/schemas/Pagination" },
+          "meta": { "$ref": "#/components/schemas/ResponseMeta" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Basic health check",
+        "responses": {
+          "200": {
+            "description": "Health check successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/db": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Database health check",
+        "responses": {
+          "200": {
+            "description": "Database health check",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DbHealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oauth/token": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "OAuth2 Token Endpoint",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "grant_type": { "type": "string" },
+                  "username": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token issued",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TokenResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Get current user info",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user info",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthMeResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billers": {
+      "get": {
+        "tags": ["Billers"],
+        "summary": "List all billers",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of billers",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BillersListResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Billers"],
+        "summary": "Create a new biller",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BillerInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Biller created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BillerResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billers/categories": {
+      "get": {
+        "tags": ["Billers"],
+        "summary": "List biller categories",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of categories",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CategoriesResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billers/{id}": {
+      "get": {
+        "tags": ["Billers"],
+        "summary": "Get biller by ID",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Biller found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BillerResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Biller not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Billers"],
+        "summary": "Update biller (full replace)",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BillerInput" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Biller updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BillerResponse" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Billers"],
+        "summary": "Partial update biller",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BillerPatch" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Biller updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BillerResponse" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Billers"],
+        "summary": "Delete biller",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Biller deleted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DeleteResponse" }
+              }
+            }
+          }
+        }
+      },
+      "head": {
+        "tags": ["Billers"],
+        "summary": "Check if biller exists",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Biller exists"
+          },
+          "404": {
+            "description": "Biller not found"
+          }
+        }
+      }
+    },
+    "/v1/bills": {
+      "get": {
+        "tags": ["Bills"],
+        "summary": "List bills",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of bills",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BillsListResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Bills"],
+        "summary": "Create a new bill",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BillInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Bill created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BillResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/bills/summary": {
+      "get": {
+        "tags": ["Bills"],
+        "summary": "Get bills summary",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bills summary",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BillsSummaryResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/bills/overdue": {
+      "get": {
+        "tags": ["Bills"],
+        "summary": "Get overdue bills",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of overdue bills",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BillsListResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/bills/{id}": {
+      "get": {
+        "tags": ["Bills"],
+        "summary": "Get bill by ID",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bill found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BillResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Bill not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Bills"],
+        "summary": "Update bill (full replace)",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BillInput" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bill updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BillResponse" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Bills"],
+        "summary": "Partial update bill",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BillPatch" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bill updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BillResponse" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Bills"],
+        "summary": "Delete bill",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bill deleted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DeleteResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/bills/{id}/fetch": {
+      "post": {
+        "tags": ["Bills"],
+        "summary": "Fetch latest bill from biller",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bill fetched",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BillFetchResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payments": {
+      "get": {
+        "tags": ["Payments"],
+        "summary": "List payments",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of payments",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentsListResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Payments"],
+        "summary": "Create/process a payment",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PaymentInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payments/stats": {
+      "get": {
+        "tags": ["Payments"],
+        "summary": "Get payment statistics",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment statistics",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentStatsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payments/{id}": {
+      "get": {
+        "tags": ["Payments"],
+        "summary": "Get payment by ID",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Payment not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Payments"],
+        "summary": "Delete payment",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment deleted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DeleteResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payments/{id}/refund": {
+      "post": {
+        "tags": ["Payments"],
+        "summary": "Refund a payment",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment refunded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RefundResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payments/{id}/cancel": {
+      "post": {
+        "tags": ["Payments"],
+        "summary": "Cancel a payment",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment cancelled",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payment-methods": {
+      "get": {
+        "tags": ["Payment Methods"],
+        "summary": "List payment methods",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of payment methods",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentMethodsListResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Payment Methods"],
+        "summary": "Create payment method",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PaymentMethodInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment method created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentMethodResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payment-methods/types": {
+      "get": {
+        "tags": ["Payment Methods"],
+        "summary": "List supported payment types",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of payment types",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentTypesResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payment-methods/{id}": {
+      "get": {
+        "tags": ["Payment Methods"],
+        "summary": "Get payment method by ID",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment method found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentMethodResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Payment method not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Payment Methods"],
+        "summary": "Update payment method",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PaymentMethodInput" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment method updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentMethodResponse" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Payment Methods"],
+        "summary": "Partial update payment method",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expiryMonth": { "type": "integer" },
+                  "expiryYear": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment method updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentMethodResponse" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Payment Methods"],
+        "summary": "Delete payment method",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment method deleted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DeleteResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payment-methods/{id}/set-default": {
+      "post": {
+        "tags": ["Payment Methods"],
+        "summary": "Set as default payment method",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment method set as default",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentMethodResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "List users",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of users",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UsersListResponse" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Users"],
+        "summary": "Create user",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UserInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/{id}": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user by ID",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Users"],
+        "summary": "Update user",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UserInput" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserResponse" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Users"],
+        "summary": "Partial update user",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UserPatch" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserResponse" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Users"],
+        "summary": "Delete user",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DeleteResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/{id}/bills": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user's bills",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User's bills",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BillsListResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/{id}/payment-methods": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user's payment methods",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User's payment methods",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PaymentMethodsListResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/{id}/transactions": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user's transactions",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User's transactions",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TransactionsListResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/{id}/verify-kyc": {
+      "post": {
+        "tags": ["Users"],
+        "summary": "Update KYC status",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kycStatus": { "$ref": "#/components/schemas/KycStatus" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "KYC status updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/KycVerificationResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/files": {
+      "get": {
+        "tags": ["Files"],
+        "summary": "List uploaded files",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of files",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FilesListResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/files/upload": {
+      "post": {
+        "tags": ["Files"],
+        "summary": "Upload a single file",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "File uploaded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FileUploadResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/files/upload-multiple": {
+      "post": {
+        "tags": ["Files"],
+        "summary": "Upload multiple files",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Files uploaded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MultiFileUploadResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/files/{id}": {
+      "get": {
+        "tags": ["Files"],
+        "summary": "Get file metadata",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File metadata",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/FileResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "File not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Files"],
+        "summary": "Delete a file",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File deleted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DeleteResponse" }
+              }
+            }
+          }
+        }
+      },
+      "head": {
+        "tags": ["Files"],
+        "summary": "Check if file exists",
+        "security": [
+          { "ApiKeyAuth": [] },
+          { "BearerAuth": [] },
+          { "BasicAuth": [] }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File exists"
+          },
+          "404": {
+            "description": "File not found"
+          }
+        }
+      }
+    }
+  }
+}
